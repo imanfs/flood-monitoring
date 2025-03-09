@@ -3,6 +3,7 @@ import datetime as dt
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
+import concurrent.futures
 
 
 class MeasurementTool:
@@ -50,21 +51,40 @@ class MeasurementTool:
         )
         station_readings = station_page.json()["items"]
 
+        # Group data by measure to reduce processing time
+        measures_data = {}
         for reading in station_readings:
             measure = self.get_measure_id(reading)
-            if measure not in self.readings.keys():
-                # initialise empty inner dict to hold timestamps,metadata and values
-                self.readings[measure] = {}
-                (
-                    self.readings[measure]["timestamps"],
-                    self.readings[measure]["values"],
-                ) = [], []
-                self.measure_metadata[measure] = self.retrieve_metadata(
-                    reading["measure"]
-                )
+            if measure not in measures_data:
+                measures_data[measure] = {
+                    "timestamps": [],
+                    "values": [],
+                    "measure_url": reading["measure"],
+                }
 
-            self.readings[measure]["timestamps"].append(reading["dateTime"])
-            self.readings[measure]["values"].append(reading["value"])
+            measures_data[measure]["timestamps"].append(reading["dateTime"])
+            measures_data[measure]["values"].append(reading["value"])
+
+        # Fetch all measure metadata concurrently
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_measure = {
+                executor.submit(self.retrieve_metadata, data["measure_url"]): measure
+                for measure, data in measures_data.items()
+            }
+
+            for future in concurrent.futures.as_completed(future_to_measure):
+                measure = future_to_measure[future]
+                try:
+                    self.measure_metadata[measure] = future.result()
+                except Exception as exc:
+                    st.error(f"Error retrieving metadata for {measure}: {exc}")
+
+        # Process and store the results
+        for measure, data in measures_data.items():
+            self.readings[measure] = {
+                "timestamps": data["timestamps"],
+                "values": data["values"],
+            }
 
     def get_rounded_current_time(self):
         """
