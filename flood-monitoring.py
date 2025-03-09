@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import concurrent.futures
 import re
+import matplotlib.dates as mdates
 
 
 class MeasurementTool:
@@ -109,7 +110,7 @@ class MeasurementTool:
         new_dt = datetime - dt.timedelta(hours=24)
         return new_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def plot_measure(self, df):
+    def plot_measure(self, df, measure_id):
         """Plots the time series data."""
 
         df = df.sort_values("timestamps")
@@ -118,8 +119,8 @@ class MeasurementTool:
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.plot(df["timestamps"], df["values"], marker="o", linestyle="-")
 
-        ax.set_xlabel("Timestamp")
-        ax.set_ylabel("Value")
+        ax.set_ylabel(tool.measure_metadata[measure_id]["unitName"])
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
         ax.set_title("Time Series Data")
         plt.xticks(rotation=45)  # readability
         ax.grid()
@@ -225,4 +226,4 @@ if station_id:
 
         df = pd.DataFrame(tool.readings[measure_name])
         st.write(df)  # Display the data in a table
-        tool.plot_measure(df)  # Plot the data
+        tool.plot_measure(df, measure_name)  # Plot the data
