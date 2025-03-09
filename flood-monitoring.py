@@ -12,10 +12,7 @@ class MeasurementTool:
         self.root = "https://environment.data.gov.uk/flood-monitoring"
         self.page_url = self.root + "/id/stations/"
         self.session = requests.Session()  # Use a session for connection pooling
-        curr_timestamp_rounded = (
-            self.get_rounded_current_time()
-        )  # rounded down to last 15 m interval
-        self.last_24_hrs = self.subtract_24_hours(curr_timestamp_rounded)
+        self.last_24_hrs = self.subtract_24h_from_now()
 
         self.stations = self._initialize_stations()
 
@@ -80,11 +77,14 @@ class MeasurementTool:
         rounded_time = now.replace(minute=rounded_minutes, second=0, microsecond=0)
         return rounded_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def subtract_24_hours(self, timestamp: str) -> str:
+    def subtract_24h_from_now(self):
         """
         Subtracts 24 hours from a given timestamp and returns it in the same format.
         """
-        datetime = dt.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        curr_timestamp_rounded = (
+            self.get_rounded_current_time()
+        )  # rounded down to last 15 m interval
+        datetime = dt.datetime.strptime(curr_timestamp_rounded, "%Y-%m-%dT%H:%M:%SZ")
         new_dt = datetime - dt.timedelta(hours=24)
         return new_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
