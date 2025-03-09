@@ -15,20 +15,20 @@ class MeasurementTool:
         self.entries = self.page.json()["items"]
         self.stations = self.create_stations_dict()
         self.data = {}
-        self.metadata = {}
+        self.measure_metadata = {}
         latest_possible_reading_time = self.get_rounded_timestamp()
         self.last_24_hrs = self.subtract_24_hours(latest_possible_reading_time)
 
-    def retrieve_measure_metadata(self, measure_url):
-        station_page = requests.get(measure_url)
-        return station_page.json()["items"]
+    def retrieve_metadata(self, url):
+        page = requests.get(url)
+        return page.json()["items"]
 
     def retrieve_station_data(self, station_id):
         """
         Returns the last 24 hours of recordings for a given station.
         """
         station_url = self.page_url + station_id
-        # self.metadata = self.retrieve_station_metadata(station_url)
+        self.station_metadata = self.retrieve_metadata(station_url)
 
         station_page = requests.get(station_url + "/readings?since=" + self.last_24_hrs)
         station_data = station_page.json()["items"]
@@ -39,7 +39,7 @@ class MeasurementTool:
                 # initialise empty inner dict to hold timestamps,metadata and values
                 self.data[measure] = {}
                 self.data[measure]["timestamps"], self.data[measure]["values"] = [], []
-                self.metadata[measure] = self.retrieve_measure_metadata(
+                self.measure_metadata[measure] = self.retrieve_metadata(
                     datapoint["measure"]
                 )
             timestamp = datapoint["dateTime"]
@@ -125,9 +125,10 @@ if station_id:
 
     # Get the list of available measures (keys from `self.data`)
     measures = list(tool.data.keys())
+    print(list(tool.data.keys()))
 
     def get_measure_name(measure_id):
-        return tool.create_measure_label(tool.metadata[measure_id])
+        return tool.create_measure_label(tool.measure_metadata[measure_id])
 
     # Use format_func to display the friendly name
     measure_name = st.selectbox(
