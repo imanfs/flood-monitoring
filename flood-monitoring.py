@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 import concurrent.futures
+import re
 
 
 class MeasurementTool:
@@ -133,16 +134,32 @@ class MeasurementTool:
         return "-".join(data["measure"].split("/")[-1].split("-")[1:])
 
     def create_measure_label(self, measure_metadata):
-        """
-        Creates a formatted measure label based on metadata.
-        """
+        """Creates a formatted measure label based on metadata."""
         return f"{measure_metadata['parameterName']} - {measure_metadata['qualifier']}"
 
     def create_station_label(self, station_id):
-        """
-        Creates a formatted station labebl based on station name and ID.
-        """
+        """Creates a formatted station label based on station name and ID."""
         return f"{station_id}: {tool.stations[station_id]}"
+
+    def get_station_info(self):
+        """Extracts key station information for display."""
+        station_info = {}
+        if hasattr(self, "station_metadata"):
+            info_keys = [
+                "town",
+                "riverName",
+                "eaAreaName",
+                "eaRegionName",
+                "catchmentName",
+            ]
+            for key in info_keys:
+                if key in self.station_metadata:
+                    # convert camelCase to Title Case
+                    display_key = " ".join(
+                        word.capitalize() for word in re.findall(r"[A-Z]?[a-z]+", key)
+                    )
+                    station_info[display_key] = self.station_metadata[key]
+        return station_info
 
 
 # Create an instance of MeasurementTool
@@ -173,13 +190,39 @@ if station_id:
     def get_measure_name(measure_id):
         return tool.create_measure_label(tool.measure_metadata[measure_id])
 
-    # Use format_func to display the friendly name
     measure_name = st.selectbox(
         "Select Measure", measures, format_func=get_measure_name
-    )
+    )  # Use format_func to display the formatted name
 
     # Fetch and plot data when the measure is selected
     if measure_name:
+        st.subheader("Station Information")
+        station_info = tool.get_station_info()
+
+        # Create two columns for cleaner station info display
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if "Town" in station_info:
+                st.write(f"**Town:** {station_info['Town']}")
+            if "River Name" in station_info:
+                st.write(f"**River:** {station_info['River Name']}")
+
+        with col2:
+            if "Ea Area Name" in station_info:
+                st.write(f"**Area:** {station_info['Ea Area Name']}")
+            if "Ea Region Name" in station_info:
+                st.write(f"**Region:** {station_info['Ea Region Name']}")
+
+        if "Catchment Name" in station_info:
+            st.write(f"**Catchment:** {station_info['Catchment Name']}")
+
+        st.markdown("---")  # Horizontal line to separate info from data
+
+        st.subheader(
+            f"Measurement Data: {tool.create_measure_label(tool.measure_metadata[measure_name])}"
+        )
+
         df = pd.DataFrame(tool.readings[measure_name])
         st.write(df)  # Display the data in a table
         tool.plot_measure(df)  # Plot the data
